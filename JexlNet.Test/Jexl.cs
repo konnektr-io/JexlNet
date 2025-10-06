@@ -350,7 +350,8 @@ public class JexlUnitTest
     [InlineData("name['la' + 'st']", "Archer")]
     [InlineData("exes[2]", "Burt Reynolds")]
     [InlineData("exes[lastEx - 1]", "Len Trexler")]
-    [InlineData("exes[3] ?: exes[2]", "Burt Reynolds")]
+    [InlineData("exes[9] ?: exes[2]", "Burt Reynolds")]
+    [InlineData("exes[3] ?: exes[2]", "{\"nested\":\"value\"}")]
     public async void AccessIdentifiers(string input, string expected)
     {
         var context = new JsonObject
@@ -362,13 +363,18 @@ public class JexlUnitTest
             { "exes", new JsonArray {
                 "Nikolai Jakov",
                 "Len Trexler",
-                "Burt Reynolds"
+                "Burt Reynolds",
+                new JsonObject
+                {
+                    { "nested", "value"}
+                }
             }},
             { "lastEx", 2 }
         };
         var jexl = new Jexl();
         var result = await jexl.EvalAsync(input, context);
-        Assert.Equal(expected, result?.ToString());
+        var stringResult = result is JsonObject ? result.ToJsonString() : result?.ToString();
+        Assert.Equal(expected, stringResult);
     }
 
     [Fact]

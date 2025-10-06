@@ -143,6 +143,8 @@ namespace JexlNet
                         testResult.GetValueKind() == JsonValueKind.Number
                         && testResult.GetValue<decimal>() != 0
                     )
+                    || (testResult.GetValueKind() == JsonValueKind.Object)
+                    || (testResult.GetValueKind() == JsonValueKind.Array)
                     || (testResult.GetValueKind() == JsonValueKind.True)
                 )
             )

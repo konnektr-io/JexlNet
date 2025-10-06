@@ -12,7 +12,8 @@ namespace JexlNet
         ///<param name="node">The subexpression tree</param>
         internal static void ArgumentValue(this Parser parser, Node node)
         {
-            if (node == null || parser.Cursor?.Args == null) return;
+            if (node == null || parser.Cursor?.Args == null)
+                return;
             parser.Cursor.Args.Add(node);
         }
 
@@ -23,10 +24,7 @@ namespace JexlNet
         ///<param name="parser"></param>
         internal static void ArrayStart(this Parser parser, Node node)
         {
-            parser.PlaceAtCursor(new Node(GrammarType.ArrayLiteral)
-            {
-                Array = new List<Node>()
-            });
+            parser.PlaceAtCursor(new Node(GrammarType.ArrayLiteral) { Array = new List<Node>() });
         }
 
         ///<summary>
@@ -36,24 +34,37 @@ namespace JexlNet
         ///<param name="node">The subexpression tree</param>
         internal static void ArrayValue(this Parser parser, Node node)
         {
-            if (parser.Cursor?.Array == null) throw new Exception("ParserHandlers.ArrayValue: cursor.Array is null");
-            if (node == null) return;
+            if (parser.Cursor?.Array == null)
+                throw new Exception("ParserHandlers.ArrayValue: cursor.Array is null");
+            if (node == null)
+                return;
             parser.Cursor.Array.Add(node);
         }
 
         ///<summary>
         ///Handles tokens of type 'binaryOp', indicating an operation that has two
         ///inputs: a left side and a right side.
-        ///</summary>   
+        ///</summary>
         ///<param name="parser"></param>
         ///<param name="token">A token object</param>
         internal static void BinaryOperator(this Parser parser, Node node)
         {
-            string gramarElementKey = node?.Value?.GetValue<string>() ?? throw new ApplicationException("node.Value is null");
-            ElementGrammar grammarElement = parser.Grammar.Elements.TryGetValue(gramarElementKey, out ElementGrammar value) ? value : throw new ApplicationException($"Grammar element {gramarElementKey} not found");
+            string gramarElementKey =
+                node?.Value?.GetValue<string>()
+                ?? throw new ApplicationException("node.Value is null");
+            ElementGrammar grammarElement = parser.Grammar.Elements.TryGetValue(
+                gramarElementKey,
+                out ElementGrammar value
+            )
+                ? value
+                : throw new ApplicationException($"Grammar element {gramarElementKey} not found");
             int precedence = grammarElement.Precedence;
             Node parent = parser.Cursor?.Parent;
-            while (parent != null && parent.Operator != null && parser.Grammar.Elements[parent.Operator].Precedence >= precedence)
+            while (
+                parent != null
+                && parent.Operator != null
+                && parser.Grammar.Elements[parent.Operator].Precedence >= precedence
+            )
             {
                 parser.Cursor = parent;
                 parent = parser.Cursor?.Parent;
@@ -78,11 +89,18 @@ namespace JexlNet
         internal static void Dot(this Parser parser, Node node)
         {
             parser.NextIdentEncapsulate =
-                parser.Cursor != null &&
-                parser.Cursor.Type != GrammarType.UnaryExpression &&
-                (parser.Cursor.Type != GrammarType.BinaryExpression ||
-                    (parser.Cursor.Type == GrammarType.BinaryExpression && parser.Cursor.Right != null));
-            parser.NextIdentRelative = parser.Cursor == null || (parser.Cursor != null && parser.NextIdentEncapsulate != true);
+                parser.Cursor != null
+                && parser.Cursor.Type != GrammarType.UnaryExpression
+                && (
+                    parser.Cursor.Type != GrammarType.BinaryExpression
+                    || (
+                        parser.Cursor.Type == GrammarType.BinaryExpression
+                        && parser.Cursor.Right != null
+                    )
+                );
+            parser.NextIdentRelative =
+                parser.Cursor == null
+                || (parser.Cursor != null && parser.NextIdentEncapsulate != true);
             if (parser.NextIdentRelative == true)
             {
                 parser.Relative = true;
@@ -97,12 +115,14 @@ namespace JexlNet
         ///<param name="node">The subexpression tree</param>
         internal static void Filter(this Parser parser, Node node)
         {
-            parser.PlaceBeforeCursor(new Node(GrammarType.FilterExpression)
-            {
-                Expr = node,
-                Relative = parser.SubParser?.IsRelative(),
-                Subject = parser.Cursor
-            });
+            parser.PlaceBeforeCursor(
+                new Node(GrammarType.FilterExpression)
+                {
+                    Expr = node,
+                    Relative = parser.SubParser?.IsRelative(),
+                    Subject = parser.Cursor
+                }
+            );
         }
 
         ///<summary>
@@ -112,7 +132,8 @@ namespace JexlNet
         ///<param name="node">The subexpression tree</param>
         internal static void SequenceValue(this Parser parser, Node node)
         {
-            if (parser.SubParser == null) return;
+            if (parser.SubParser == null)
+                return;
             if (parser.Cursor.Type == GrammarType.SequenceLiteral)
             {
                 parser.Cursor.Args.Add(node);
@@ -125,10 +146,12 @@ namespace JexlNet
             else
             {
                 // If in a sub expression, we need to stop the subexpression and go a level up
-                parser.PlaceBeforeCursor(new Node(GrammarType.SequenceLiteral)
-                {
-                    Args = new List<Node> { parser.Cursor, node }
-                });
+                parser.PlaceBeforeCursor(
+                    new Node(GrammarType.SequenceLiteral)
+                    {
+                        Args = new List<Node> { parser.Cursor, node }
+                    }
+                );
             }
         }
 
@@ -140,13 +163,16 @@ namespace JexlNet
         ///<param name="node">A token object</param>
         internal static void FunctionCall(this Parser parser, Node node)
         {
-            if (parser.Cursor?.Value == null) throw new Exception("ParserHandlers.FunctionCall: cursor.Value is null");
-            parser.PlaceBeforeCursor(new Node(GrammarType.FunctionCall)
-            {
-                Name = parser.Cursor.Value.GetValue<string>(),
-                Args = new List<Node>(),
-                Pool = Grammar.PoolType.Functions
-            });
+            if (parser.Cursor?.Value == null)
+                throw new Exception("ParserHandlers.FunctionCall: cursor.Value is null");
+            parser.PlaceBeforeCursor(
+                new Node(GrammarType.FunctionCall)
+                {
+                    Name = parser.Cursor.Value.GetValue<string>(),
+                    Args = new List<Node>(),
+                    Pool = Grammar.PoolType.Functions
+                }
+            );
         }
 
         ///<summary>
@@ -156,7 +182,8 @@ namespace JexlNet
         ///<param name="node">A token object</param>
         internal static void Identifier(this Parser parser, Node node)
         {
-            if (node?.Value == null) throw new Exception("ParserHandlers.Identifier: node is null");
+            if (node?.Value == null)
+                throw new Exception("ParserHandlers.Identifier: node is null");
             Node newNode = new Node(GrammarType.Identifier, node.Value);
             if (parser.NextIdentEncapsulate == true)
             {
@@ -183,7 +210,8 @@ namespace JexlNet
         ///<param name="node">A token object</param>
         internal static void Literal(this Parser parser, Node node)
         {
-            if (node?.Value == null) throw new Exception("ParserHandlers.Literal: node is null");
+            if (node?.Value == null)
+                throw new Exception("ParserHandlers.Literal: node is null");
             parser.PlaceAtCursor(new Node(GrammarType.Literal, node.Value));
         }
 
@@ -194,7 +222,8 @@ namespace JexlNet
         ///<param name="node">A token object</param>
         internal static void ObjectKey(this Parser parser, Node node)
         {
-            if (node?.Value == null) throw new Exception("ParserHandlers.ObjectKey: node is null");
+            if (node?.Value == null)
+                throw new Exception("ParserHandlers.ObjectKey: node is null");
             parser.CursorObjectKey = node.Value.GetValue<string>();
         }
 
@@ -205,10 +234,9 @@ namespace JexlNet
         ///<param name="node">The subexpression tree</param>
         internal static void ObjectStart(this Parser parser, Node node)
         {
-            parser.PlaceAtCursor(new Node(GrammarType.ObjectLiteral)
-            {
-                Object = new Dictionary<string, Node>()
-            });
+            parser.PlaceAtCursor(
+                new Node(GrammarType.ObjectLiteral) { Object = new Dictionary<string, Node>() }
+            );
         }
 
         ///<summary>
@@ -219,9 +247,12 @@ namespace JexlNet
         ///<param name="node">The subexpression tree</param>
         internal static void ObjectValue(this Parser parser, Node node)
         {
-            if (node == null) throw new Exception("ParserHandlers.ObjectValue: node is null");
-            if (parser.Cursor?.Object == null) throw new Exception("ParserHandlers.ObjectValue: cursor.Object is null");
-            if (parser.CursorObjectKey == null) throw new Exception("ParserHandlers.ObjectValue: cursorObjectKey is null");
+            if (node == null)
+                throw new Exception("ParserHandlers.ObjectValue: node is null");
+            if (parser.Cursor?.Object == null)
+                throw new Exception("ParserHandlers.ObjectValue: cursor.Object is null");
+            if (parser.CursorObjectKey == null)
+                throw new Exception("ParserHandlers.ObjectValue: cursorObjectKey is null");
             parser.Cursor.Object[parser.CursorObjectKey] = node;
         }
 
@@ -243,7 +274,8 @@ namespace JexlNet
         ///<param name="node">The subexpression tree</param>
         internal static void TernaryEnd(this Parser parser, Node node)
         {
-            if (parser.Cursor == null) throw new Exception("ParserHandlers.TernaryEnd: cursor is null");
+            if (parser.Cursor == null)
+                throw new Exception("ParserHandlers.TernaryEnd: cursor is null");
             parser.Cursor.Alternate = node;
         }
 
@@ -254,7 +286,8 @@ namespace JexlNet
         ///<param name="node">The subexpression tree</param>
         internal static void TernaryMid(this Parser parser, Node node)
         {
-            if (parser.Cursor == null) throw new Exception("ParserHandlers.TernaryMid: cursor is null");
+            if (parser.Cursor == null)
+                throw new Exception("ParserHandlers.TernaryMid: cursor is null");
             parser.Cursor.Consequent = node;
         }
 
@@ -267,10 +300,7 @@ namespace JexlNet
         ///<param name="node">The subexpression tree</param>
         internal static void TernaryStart(this Parser parser, Node node)
         {
-            parser.Tree = new Node(GrammarType.ConditionalExpression)
-            {
-                Test = parser.Tree
-            };
+            parser.Tree = new Node(GrammarType.ConditionalExpression) { Test = parser.Tree };
             parser.Cursor = parser.Tree;
         }
 
@@ -282,14 +312,18 @@ namespace JexlNet
         ///<param name="node">A token object</param>
         internal static void Transform(this Parser parser, Node node)
         {
-            if (node?.Value == null) throw new Exception("ParserHandlers.Transform: node.Value is null");
-            if (parser.Cursor == null) throw new Exception("ParserHandlers.Transform: cursor is null");
-            parser.PlaceBeforeCursor(new Node(GrammarType.FunctionCall)
-            {
-                Name = node.Value.GetValue<string>(),
-                Args = new List<Node> { parser.Cursor },
-                Pool = Grammar.PoolType.Transforms
-            });
+            if (node?.Value == null)
+                throw new Exception("ParserHandlers.Transform: node.Value is null");
+            if (parser.Cursor == null)
+                throw new Exception("ParserHandlers.Transform: cursor is null");
+            parser.PlaceBeforeCursor(
+                new Node(GrammarType.FunctionCall)
+                {
+                    Name = node.Value.GetValue<string>(),
+                    Args = new List<Node> { parser.Cursor },
+                    Pool = Grammar.PoolType.Transforms
+                }
+            );
         }
 
         ///<summary>
@@ -300,33 +334,35 @@ namespace JexlNet
         ///<param name="node">A token object</param>
         internal static void UnaryOperator(this Parser parser, Node node)
         {
-            if (node?.Value == null) throw new Exception("ParserHandlers.UnaryOp: node.Value is null");
-            parser.PlaceAtCursor(new Node(GrammarType.UnaryExpression)
-            {
-                Operator = node.Value.GetValue<string>()
-            });
+            if (node?.Value == null)
+                throw new Exception("ParserHandlers.UnaryOp: node.Value is null");
+            parser.PlaceAtCursor(
+                new Node(GrammarType.UnaryExpression) { Operator = node.Value.GetValue<string>() }
+            );
         }
-        internal static readonly Dictionary<GrammarType, Action<Parser, Node>> Handlers = new Dictionary<GrammarType, Action<Parser, Node>>()
-        {
-            { GrammarType.ArgumentValue, ArgumentValue },
-            { GrammarType.ArrayStart, ArrayStart },
-            { GrammarType.ArrayValue, ArrayValue },
-            { GrammarType.BinaryOperator, BinaryOperator },
-            { GrammarType.Dot, Dot },
-            { GrammarType.Filter, Filter },
-            { GrammarType.FunctionCall, FunctionCall },
-            { GrammarType.Identifier, Identifier },
-            { GrammarType.Literal, Literal },
-            { GrammarType.ObjectKey, ObjectKey },
-            { GrammarType.ObjectStart, ObjectStart },
-            { GrammarType.ObjectValue, ObjectValue },
-            { GrammarType.SubExpression, SubExpression },
-            { GrammarType.TernaryEnd, TernaryEnd },
-            { GrammarType.TernaryMid, TernaryMid },
-            { GrammarType.TernaryStart, TernaryStart },
-            { GrammarType.Transform, Transform },
-            { GrammarType.UnaryOperator, UnaryOperator },
-            { GrammarType.SequenceValue, SequenceValue }
-        };
+
+        internal static readonly Dictionary<GrammarType, Action<Parser, Node>> Handlers =
+            new Dictionary<GrammarType, Action<Parser, Node>>()
+            {
+                { GrammarType.ArgumentValue, ArgumentValue },
+                { GrammarType.ArrayStart, ArrayStart },
+                { GrammarType.ArrayValue, ArrayValue },
+                { GrammarType.BinaryOperator, BinaryOperator },
+                { GrammarType.Dot, Dot },
+                { GrammarType.Filter, Filter },
+                { GrammarType.FunctionCall, FunctionCall },
+                { GrammarType.Identifier, Identifier },
+                { GrammarType.Literal, Literal },
+                { GrammarType.ObjectKey, ObjectKey },
+                { GrammarType.ObjectStart, ObjectStart },
+                { GrammarType.ObjectValue, ObjectValue },
+                { GrammarType.SubExpression, SubExpression },
+                { GrammarType.TernaryEnd, TernaryEnd },
+                { GrammarType.TernaryMid, TernaryMid },
+                { GrammarType.TernaryStart, TernaryStart },
+                { GrammarType.Transform, Transform },
+                { GrammarType.UnaryOperator, UnaryOperator },
+                { GrammarType.SequenceValue, SequenceValue }
+            };
     }
 }

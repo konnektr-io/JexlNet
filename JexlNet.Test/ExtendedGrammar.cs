@@ -800,6 +800,53 @@ public class ExtendedGrammarUnitTest
         Assert.True(JsonNode.DeepEquals(expected, result));
     }
 
+    [Fact]
+    public void ComplexExample9()
+    {
+        // Simplified context to demonstrate the grouping/merging bug
+        var context = JsonNode
+            .Parse(
+                @"{
+    ""data"": {
+        ""PT-101_1HR-PSI-MAX"": ""00.00"",
+        ""PT-101_1HR-PSI-MIN"": ""00.00"",
+        ""PT-101_1HR-PSI-AVG"": ""00.00"",
+        ""PT-101_1HR-PSI-SD"": ""00.00"",
+        ""FT-105_1HR-GPM-MAX"": ""00.00"",
+        ""FT-105_1HR-GPM-MIN"": ""00.00""
+    }
+}"
+            )!
+            .AsObject()!;
+
+        var expression =
+            "data|entries|filter('value[0]|contains(\"_\")')|reduce('accumulator|merge([[value[0]|split(\"_\")[0],(accumulator[value[0]|split(\"_\")[0]] ?: {})|merge([[value[0]|split(\"_\")[1], value[1]]]|toObject)]]|toObject)',{})|entries";
+
+        var jexl = new Jexl(new ExtendedGrammar());
+        var result = jexl.Eval(expression, context);
+
+        // Expected output: grouped by prefix, all suffixes merged
+        var expected = JsonNode.Parse(
+            @"[
+    [""PT-101"", {
+        ""1HR-PSI-MAX"": ""00.00"",
+        ""1HR-PSI-MIN"": ""00.00"",
+        ""1HR-PSI-AVG"": ""00.00"",
+        ""1HR-PSI-SD"": ""00.00""
+    }],
+    [""FT-105"", {
+        ""1HR-GPM-MAX"": ""00.00"",
+        ""1HR-GPM-MIN"": ""00.00""
+    }]
+]"
+        );
+
+        Assert.True(
+            JsonNode.DeepEquals(expected, result),
+            $"Expected: {expected}\nActual: {result}"
+        );
+    }
+
     [Theory]
     [InlineData("['f','o','o']|map((v,i) => v + i)|join('')", "f0o1o2")]
     [InlineData(
