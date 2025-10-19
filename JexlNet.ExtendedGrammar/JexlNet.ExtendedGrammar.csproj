@@ -2,7 +2,7 @@
   <PropertyGroup>
     <PackageId>JexlNet.ExtendedGrammar</PackageId>
     <PackageTags>Jexl JexlNet expression mapping transformation</PackageTags>
-    <Description>Extended grammar for JexkNet, the powerful context-based expression parser and evaluator in C# using JEXL (Javascript Expression Language) expressions.</Description>
+    <Description>Extended grammar for JexlNet, the powerful context-based expression parser and evaluator in C# using JEXL (Javascript Expression Language) expressions.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <IncludeSymbols>true</IncludeSymbols>
