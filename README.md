@@ -4,6 +4,10 @@ Powerful context-based expression parser and evaluator in C# using JEXL (Javascr
 
 NOTE: This library handles the JEXL from [TomFrost's JEXL library](https://github.com/TomFrost/Jexl). It does NOT handle the similarly-named Apache Commons JEXL language.
 
+## Documentation
+
+For full documentation, visit [https://docs.konnektr.io/docs/jexl/](https://docs.konnektr.io/docs/jexl/)
+
 ## Quick start
 
 Expressions can be evaluated synchronously or asynchronously by using the `Eval` and `EvalAsync` methods respectively.
