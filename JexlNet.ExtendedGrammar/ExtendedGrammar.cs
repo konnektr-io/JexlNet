@@ -224,6 +224,10 @@ namespace JexlNet
             AddFunction("switch", Case);
             AddFunction("$switch", Case);
             AddTransform("switch", Case);
+            // ArrayRange
+            AddFunction("range", ArrayRange);
+            AddFunction("$range", ArrayRange);
+            AddTransform("range", ArrayRange);
             // ArrayAppend
             AddFunction("append", ArrayAppend);
             AddFunction("$append", ArrayAppend);
@@ -1346,6 +1350,44 @@ namespace JexlNet
             }
             // Return null if no default specified
             return null;
+        }
+
+        /// <summary>
+        /// Returns a sub-array from start index to end index.
+        /// </summary>
+        ///
+        /// <example><code>range(array, start, end)</code><code>$range(array, start, end)</code><code>array|range(start, end)</code></example>
+        /// <returns>The sub-array from start to end, or empty array if input is not an array</returns>
+        public static JsonNode ArrayRange(JsonNode input, JsonNode start, JsonNode end = null)
+        {
+            if (input is JsonArray array && start is JsonValue startValue)
+            {
+                int startIndex = startValue.ToInt32();
+                int endIndex = end is JsonValue endValue ? endValue.ToInt32() : array.Count;
+
+                // Handle out of bounds
+                if (startIndex < 0)
+                {
+                    startIndex = 0;
+                }
+                if (endIndex > array.Count)
+                {
+                    endIndex = array.Count;
+                }
+                if (startIndex >= endIndex)
+                {
+                    return new JsonArray();
+                }
+
+                return new JsonArray(
+                    array
+                        .Skip(startIndex)
+                        .Take(endIndex - startIndex)
+                        .Select(x => x?.DeepClone())
+                        .ToArray()
+                );
+            }
+            return new JsonArray();
         }
 
         /// <summary>
