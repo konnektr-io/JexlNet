@@ -159,6 +159,21 @@ public class ExtendedGrammarUnitTest
     }
 
     [Theory]
+    [InlineData("'foobar'|encodeToNumber", "115969458388351")]
+    [InlineData("'115969458388351'|decodeFromNumber", "foobar")]
+    [InlineData("'hello world'|encodeToNumber|decodeFromNumber", "hello world")]
+    [InlineData("''|encodeToNumber", "0")]
+    [InlineData("'0'|decodeFromNumber", "")]
+    [InlineData("'test123'|encodeToNumber", "33826872314332253")]
+    [InlineData("'33826872314332253'|decodeFromNumber", "test123")]
+    public void ConvertToNumber(string expression, string expected)
+    {
+        var jexl = new Jexl(new ExtendedGrammar());
+        var result = jexl.Eval(expression);
+        Assert.Equal(expected, result?.ToString());
+    }
+
+    [Theory]
     [InlineData("{foo:'bar',baz:'tek'}|formUrlEncoded", "foo=bar&baz=tek")]
     public void ConvertFormUrlEncoded(string expression, string expected)
     {

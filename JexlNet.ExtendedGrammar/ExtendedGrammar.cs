@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -116,6 +117,14 @@ namespace JexlNet
             AddFunction("base64Decode", Base64Decode);
             AddFunction("$base64Decode", Base64Decode);
             AddTransform("base64Decode", Base64Decode);
+            // EncodeToNumber
+            AddFunction("encodeToNumber", EncodeToNumber);
+            AddFunction("$encodeToNumber", EncodeToNumber);
+            AddTransform("encodeToNumber", EncodeToNumber);
+            // DecodeFromNumber
+            AddFunction("decodeFromNumber", DecodeFromNumber);
+            AddFunction("$decodeFromNumber", DecodeFromNumber);
+            AddTransform("decodeFromNumber", DecodeFromNumber);
             // URLFormEncoded
             AddFunction("formUrlEncoded", FormUrlEncoded);
             AddFunction("$formUrlEncoded", FormUrlEncoded);
@@ -792,6 +801,95 @@ namespace JexlNet
                 return System.Text.Encoding.UTF8.GetString(bytes);
             }
             return null;
+        }
+
+        private const int BaseRadix = 257; // digits are 1..256
+        private static readonly System.Text.Encoding ByteEncoding = System.Text.Encoding.UTF8;
+
+        /// <summary>
+        /// Encodes a string to a BigInteger using base-257 encoding.
+        /// </summary>
+        /// <example><code>encodeToNumber(str)</code><code>$encodeToNumber(str)</code><code>str|encodeToNumber</code></example>
+        /// <returns>A string representation of the encoded number</returns>
+        public static JsonNode EncodeToNumber(JsonNode input)
+        {
+            if (input is JsonValue value)
+            {
+                string str = value.ToString();
+                return EncodeToDecimalString(str);
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Decodes a BigInteger (as string) back to the original string using base-257 encoding.
+        /// </summary>
+        /// <example><code>decodeFromNumber(numStr)</code><code>$decodeFromNumber(numStr)</code><code>numStr|decodeFromNumber</code></example>
+        /// <returns>The decoded string</returns>
+        public static JsonNode DecodeFromNumber(JsonNode input)
+        {
+            if (input is JsonValue value)
+            {
+                string digits = value.ToString();
+                return DecodeFromDecimalString(digits);
+            }
+            return null;
+        }
+
+        private static BigInteger EncodeToBigInteger(string s)
+        {
+            if (s is null)
+                throw new ArgumentNullException(nameof(s));
+            var bytes = ByteEncoding.GetBytes(s);
+            BigInteger n = BigInteger.Zero;
+            foreach (byte b in bytes)
+            {
+                n = n * BaseRadix + (b + 1);
+            }
+            return n; // 0 for empty string
+        }
+
+        private static string DecodeFromBigInteger(BigInteger n)
+        {
+            if (n < 0)
+                throw new ArgumentOutOfRangeException(nameof(n), "Value must be non-negative.");
+            if (n.IsZero)
+                return string.Empty;
+
+            var bytesReversed = new List<byte>(capacity: 64);
+            while (n > 0)
+            {
+                BigInteger rem;
+                n = BigInteger.DivRem(n, BaseRadix, out rem);
+                int digit = (int)rem;
+                if (digit == 0)
+                    throw new FormatException("Invalid payload (zero digit in base-257).");
+                bytesReversed.Add((byte)(digit - 1));
+            }
+            bytesReversed.Reverse();
+            return ByteEncoding.GetString(bytesReversed.ToArray());
+        }
+
+        // Convenience: decimal digits string I/O
+        private static string EncodeToDecimalString(string s)
+        {
+            var n = EncodeToBigInteger(s);
+            return n.ToString(CultureInfo.InvariantCulture); // digits only (0..9)
+        }
+
+        private static string DecodeFromDecimalString(string digits)
+        {
+            if (digits is null)
+                throw new ArgumentNullException(nameof(digits));
+            // Strict validation: digits only
+            for (int i = 0; i < digits.Length; i++)
+            {
+                char c = digits[i];
+                if (c < '0' || c > '9')
+                    throw new FormatException("Input must contain digits 0-9 only.");
+            }
+            var n = BigInteger.Parse(digits, CultureInfo.InvariantCulture);
+            return DecodeFromBigInteger(n);
         }
 
         /// <summary>
