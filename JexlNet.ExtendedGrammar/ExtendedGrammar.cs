@@ -366,6 +366,9 @@ namespace JexlNet
             AddFunction("uuid", Uuid);
             AddFunction("$uuid", Uuid);
             AddFunction("uid", Uuid);
+            AddFunction("convertTimeZone", ConvertTimeZone);
+            AddFunction("$convertTimeZone", ConvertTimeZone);
+            AddTransform("convertTimeZone", ConvertTimeZone);
             AddFunction("$uid", Uuid);
             // Type checks
             AddFunction("isArray", IsArray);
@@ -2520,6 +2523,75 @@ namespace JexlNet
         }
 
         /// <summary>
+        /// Converts an ISO datetime string to a target timezone, handling daylight savings, and returns an ISO string with the correct offset.
+        /// </summary>
+        /// <example><code>convertTimeZone(datetime, timezone)</code><code>$convertTimeZone(datetime, timezone)</code><code>datetime|convertTimeZone(timezone)</code></example>
+        /// <param name="input">ISO datetime string</param>
+        /// <param name="targetTimeZone">Target timezone (IANA or Windows ID)</param>
+        /// <returns>ISO datetime string with correct offset</returns>
+        public static JsonNode ConvertTimeZone(JsonNode input, JsonNode targetTimeZone)
+        {
+            if (
+                input is JsonValue inputVal
+                && inputVal.GetValueKind() == JsonValueKind.String
+                && targetTimeZone is JsonValue tzVal
+                && tzVal.GetValueKind() == JsonValueKind.String
+            )
+            {
+                try
+                {
+                    var isoString = inputVal.ToString();
+                    var tzStr = tzVal.ToString();
+                    var dateTime = DateTimeOffset.Parse(
+                        isoString,
+                        null,
+                        DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal
+                    );
+
+                    TimeZoneInfo tz = null;
+
+                    // Check for fixed offset string (e.g., "+02:00" or "-05:00")
+                    var offsetMatch = TimeOffsetRegex().Match(tzStr);
+                    if (offsetMatch.Success)
+                    {
+                        int hours = int.Parse(offsetMatch.Groups[2].Value);
+                        int minutes = int.Parse(offsetMatch.Groups[3].Value);
+                        int sign = offsetMatch.Groups[1].Value == "+" ? 1 : -1;
+                        var offset = new TimeSpan(sign * hours, sign * minutes, 0);
+                        var converted = dateTime.ToOffset(offset);
+                        return converted.ToString("o");
+                    }
+                    else
+                    {
+                        try
+                        {
+                            tz = TimeZoneInfo.FindSystemTimeZoneById(tzStr);
+                        }
+                        catch (TimeZoneNotFoundException)
+                        {
+                            tz = TimeZoneInfo
+                                .GetSystemTimeZones()
+                                .FirstOrDefault(
+                                    z => z.Id.Equals(tzStr, StringComparison.OrdinalIgnoreCase)
+                                );
+                        }
+                    }
+
+                    if (tz == null)
+                        return null;
+
+                    var localTime = TimeZoneInfo.ConvertTime(dateTime, tz);
+                    return localTime.ToString("o");
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
         /// Evaluate provided and return the result.
         /// If only one argument is provided, it is expected that the first argument is a JEXL expression.
         /// If two arguments are provided, the first argument is the context (must be an object) and the second argument is the JEXL expression.
@@ -2577,5 +2649,8 @@ namespace JexlNet
         {
             return input is JsonObject;
         }
+
+        [GeneratedRegex(@"^([+-])(\d{2}):(\d{2})$")]
+        public static partial Regex TimeOffsetRegex();
     }
 }

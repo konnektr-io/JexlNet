@@ -166,6 +166,23 @@ public class ExtendedGrammarUnitTest
     [InlineData("'0'|decodeFromNumber", "")]
     [InlineData("'test123'|encodeToNumber", "33826872314332253")]
     [InlineData("'33826872314332253'|decodeFromNumber", "test123")]
+    [InlineData("33826872314332253|decodeFromNumber", "test123")]
+    [InlineData(
+        "'97fd5349-44e3-4ad6-808d-73d0bae8e4ce'|encodeToNumber",
+        "129636566861708044986163242682947719641676763931411201121808589014514252327026138909913"
+    )]
+    [InlineData(
+        "'129636566861708044986163242682947719641676763931411201121808589014514252327026138909913'|decodeFromNumber",
+        "97fd5349-44e3-4ad6-808d-73d0bae8e4ce"
+    )]
+    [InlineData(
+        "'03c33649-331f-4599-88dc-4d0d285772ea'|encodeToNumber|decodeFromNumber",
+        "03c33649-331f-4599-88dc-4d0d285772ea"
+    )]
+    [InlineData(
+        "'03c33649-331f-4599-88dc-4d0d285772ea'|encodeToNumber",
+        "109561613078197303866001708025152620944285898541487114269080489527695507222965406931687"
+    )]
     public void ConvertToNumber(string expression, string expected)
     {
         var jexl = new Jexl(new ExtendedGrammar());
@@ -510,6 +527,67 @@ public class ExtendedGrammarUnitTest
         "2025-03-24T15:14:57.0000000+00:00"
     )]
     public void TimeFunctions2(string expression, string expected)
+    {
+        var jexl = new Jexl(new ExtendedGrammar());
+        var result = jexl.Eval(expression);
+        Assert.Equal(expected, result?.ToString());
+    }
+
+    [Theory]
+    [InlineData(
+        "'2025-11-26T12:00:00Z'|convertTimeZone('Pacific Standard Time')",
+        "2025-11-26T04:00:00.0000000-08:00"
+    )]
+    [InlineData(
+        "'2025-06-26T12:00:00Z'|convertTimeZone('Pacific Standard Time')",
+        "2025-06-26T05:00:00.0000000-07:00"
+    )]
+    [InlineData(
+        "'2025-06-26T12:00:00Z'|convertTimeZone('Europe/Amsterdam')",
+        "2025-06-26T14:00:00.0000000+02:00"
+    )]
+    [InlineData(
+        "'2025-11-26T12:00:00Z'|convertTimeZone('UTC')",
+        "2025-11-26T12:00:00.0000000+00:00"
+    )]
+    public void ConvertTimeZone(string expression, string expectedIso)
+    {
+        var jexl = new Jexl(new ExtendedGrammar());
+        var result = jexl.Eval(expression)?.ToString();
+        Assert.Equal(expectedIso, result);
+    }
+
+    [Theory]
+    // UTC to UTC (no offset change)
+    [InlineData(
+        "'2025-11-26T12:00:00Z'|convertTimeZone('UTC')",
+        "2025-11-26T12:00:00.0000000+00:00"
+    )]
+    // UTC to fixed offset +02:00
+    [InlineData(
+        "'2025-11-26T12:00:00Z'|convertTimeZone('+02:00')",
+        "2025-11-26T14:00:00.0000000+02:00"
+    )]
+    // UTC to fixed offset -08:00
+    [InlineData(
+        "'2025-06-26T12:00:00Z'|convertTimeZone('-08:00')",
+        "2025-06-26T04:00:00.0000000-08:00"
+    )]
+    // UTC to fixed offset -08:00 (winter)
+    [InlineData(
+        "'2025-12-26T12:00:00Z'|convertTimeZone('-08:00')",
+        "2025-12-26T04:00:00.0000000-08:00"
+    )]
+    public void ConvertTimeZone_FixedOffsets(string expression, string expectedIso)
+    {
+        var jexl = new Jexl(new ExtendedGrammar());
+        var result = jexl.Eval(expression)?.ToString();
+        Assert.Equal(expectedIso, result);
+    }
+
+    [Theory]
+    [InlineData("uuid()|length", "36")]
+    public void Uuid(string expression, string expected)
     {
         var jexl = new Jexl(new ExtendedGrammar());
         var result = jexl.Eval(expression);
