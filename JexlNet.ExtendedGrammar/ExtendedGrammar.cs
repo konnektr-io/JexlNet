@@ -2551,7 +2551,7 @@ namespace JexlNet
                     TimeZoneInfo tz = null;
 
                     // Check for fixed offset string (e.g., "+02:00" or "-05:00")
-                    var offsetMatch = TimeOffsetRegex().Match(tzStr);
+                    var offsetMatch = TimeOffsetRegex.Match(tzStr);
                     if (offsetMatch.Success)
                     {
                         int hours = int.Parse(offsetMatch.Groups[2].Value);
@@ -2650,7 +2650,9 @@ namespace JexlNet
             return input is JsonObject;
         }
 
-        [GeneratedRegex(@"^([+-])(\d{2}):(\d{2})$")]
-        public static partial Regex TimeOffsetRegex();
+        private static readonly Regex TimeOffsetRegex = new Regex(
+            @"^([+-])(\d{2}):(\d{2})$",
+            RegexOptions.Compiled
+        );
     }
 }
