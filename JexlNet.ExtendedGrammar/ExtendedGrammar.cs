@@ -377,6 +377,9 @@ namespace JexlNet
             AddFunction("isObject", IsObject);
             AddFunction("$isObject", IsObject);
             AddTransform("isObject", IsObject);
+            AddFunction("type", Type);
+            AddFunction("$type", Type);
+            AddTransform("type", Type);
         }
 
         private static readonly JsonSerializerOptions _prettyPrintOptions =
@@ -2648,6 +2651,48 @@ namespace JexlNet
         public static JsonNode IsObject(JsonNode input)
         {
             return input is JsonObject;
+        }
+
+        /// <summary>
+        /// Returns the JavaScript/JSON type of the input value as a string ('number', 'string', 'boolean', 'object', 'array', 'null', 'undefined').
+        /// </summary>
+        /// <example><code>type(arg)</code><code>$type(arg)</code><code>arg|type</code></example>
+        /// <returns>The type of the input as a string</returns>
+        public static JsonNode Type(JsonNode input)
+        {
+            if (input == null)
+                return JsonValue.Create("undefined");
+
+            if (input is JsonValue value)
+            {
+                switch (value.GetValueKind())
+                {
+                    case JsonValueKind.String:
+                        return JsonValue.Create("string");
+                    case JsonValueKind.Number:
+                        return JsonValue.Create("number");
+                    case JsonValueKind.True:
+                    case JsonValueKind.False:
+                        return JsonValue.Create("boolean");
+                    case JsonValueKind.Object:
+                        return JsonValue.Create("object");
+                    case JsonValueKind.Array:
+                        return JsonValue.Create("array");
+                    case JsonValueKind.Null:
+                        return JsonValue.Create("null");
+                    case JsonValueKind.Undefined:
+                        return JsonValue.Create("undefined");
+                }
+            }
+            else if (input is JsonArray)
+            {
+                return JsonValue.Create("array");
+            }
+            else if (input is JsonObject)
+            {
+                return JsonValue.Create("object");
+            }
+            return JsonValue.Create("undefined");
         }
 
         private static readonly Regex TimeOffsetRegex = new Regex(

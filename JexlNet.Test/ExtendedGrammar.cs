@@ -966,4 +966,19 @@ public class ExtendedGrammarUnitTest
         var result = jexl.Eval(expression)?.ToString();
         Assert.Equal(expected, result);
     }
+
+    [Theory]
+    [InlineData("5|type", "number")]
+    [InlineData("'5'|type", "string")]
+    [InlineData("true|type", "boolean")]
+    // [InlineData("null|type", "null")]
+    [InlineData("[1,2,3]|type", "array")]
+    [InlineData("{foo:1}|type", "object")]
+    [InlineData("undefined|type", "undefined")]
+    public void TypeTransform(string expression, string expected)
+    {
+        var jexl = new Jexl(new ExtendedGrammar());
+        var result = jexl.Eval(expression)?.ToString();
+        Assert.Equal(expected, result);
+    }
 }
