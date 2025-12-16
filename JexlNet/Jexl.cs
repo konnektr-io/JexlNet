@@ -72,6 +72,27 @@ namespace JexlNet
             return await expressionObj.EvalAsync(context, cancellationToken);
         }
 
+        /// <summary>
+        /// Asynchronously evaluates a Jexl string with a generic object as context.
+        /// </summary>
+        /// <param name="expression">The Jexl expression to be evaluated</param>
+        /// <param name="context">A generic object to be used as context</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>The result of the evaluation.</returns>
+        public async Task<JsonNode> EvalAsync(
+            string expression,
+            object context,
+            CancellationToken cancellationToken = default
+        )
+        {
+            JsonObject jsonContext =
+                context == null
+                    ? null
+                    : (JsonObject)
+                        JsonNode.Parse(System.Text.Json.JsonSerializer.Serialize(context));
+            return await EvalAsync(expression, jsonContext, cancellationToken);
+        }
+
         public async Task<JsonNode> EvalAsync(
             string expression,
             string context,
@@ -93,6 +114,27 @@ namespace JexlNet
         {
             var expressionObj = new Expression(Grammar, expression);
             return expressionObj.Eval(context, cancellationToken);
+        }
+
+        /// <summary>
+        /// Synchronously evaluates a Jexl string with a generic object as context.
+        /// </summary>
+        /// <param name="expression">The Jexl expression to be evaluated</param>
+        /// <param name="context">A generic object to be used as context</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>The result of the evaluation.</returns>
+        public JsonNode Eval(
+            string expression,
+            object context,
+            CancellationToken cancellationToken = default
+        )
+        {
+            JsonObject jsonContext =
+                context == null
+                    ? null
+                    : (JsonObject)
+                        JsonNode.Parse(System.Text.Json.JsonSerializer.Serialize(context));
+            return Eval(expression, jsonContext, cancellationToken);
         }
 
         public JsonNode Eval(
