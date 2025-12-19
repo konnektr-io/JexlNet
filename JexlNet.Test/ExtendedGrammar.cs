@@ -585,13 +585,21 @@ public class ExtendedGrammarUnitTest
         Assert.Equal(expectedIso, result);
     }
 
-    [Fact]
-    public void LocalTimeToIsoWithOffset_EuropeAmsterdam()
+    [Theory]
+    // UTC to UTC (no offset change)
+    [InlineData(
+        "'2025-06-26 14:00:00'|localTimeToIsoWithOffset('Europe/Amsterdam')",
+        "2025-06-26T14:00:00.0000000+02:00"
+    )]
+    [InlineData(
+        "'2025-12-16 09:00:00'|localTimeToIsoWithOffset('Europe/Amsterdam')",
+        "2025-12-16T09:00:00.0000000+01:00"
+    )]
+    public void LocalTimeToIsoWithOffset_EuropeAmsterdam(string expression, string expectedIso)
     {
         var jexl = new Jexl(new ExtendedGrammar());
-        var result = jexl.Eval("'2025-06-26 14:00:00'|localTimeToIsoWithOffset('Europe/Amsterdam')")
-            ?.ToString();
-        Assert.Equal("2025-06-26T14:00:00.0000000+02:00", result);
+        var result = jexl.Eval(expression)?.ToString();
+        Assert.Equal(expectedIso, result);
     }
 
     [Theory]
