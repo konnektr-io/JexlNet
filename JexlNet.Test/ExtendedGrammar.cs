@@ -239,7 +239,7 @@ public class ExtendedGrammarUnitTest
         var result = jexl.Eval(expression);
         var options = new JsonSerializerOptions
         {
-            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         };
         Assert.Equal(expected, JsonSerializer.Serialize(result, options));
     }
@@ -394,7 +394,7 @@ public class ExtendedGrammarUnitTest
                     new JsonObject { { "lastName", "Poovey" }, { "age", 34 } },
                     new JsonObject { { "lastName", "Figgis" }, { "age", 45 } },
                 }
-            }
+            },
         };
         var jexl = new Jexl(new ExtendedGrammar());
         var result = jexl.Eval(expression, context);
@@ -425,7 +425,7 @@ public class ExtendedGrammarUnitTest
                     new JsonObject { { "lastName", "Poovey" }, { "age", 34 } },
                     new JsonObject { { "lastName", "Figgis" }, { "age", 45 } },
                 }
-            }
+            },
         };
         var jexl = new Jexl(new ExtendedGrammar());
         var result = jexl.Eval(expression, context);
@@ -454,7 +454,7 @@ public class ExtendedGrammarUnitTest
                     new JsonObject { { "lastName", "Poovey" }, { "age", 34 } },
                     new JsonObject { { "lastName", "Figgis" }, { "age", 45 } },
                 }
-            }
+            },
         };
         var jexl = new Jexl(new ExtendedGrammar());
         var result = jexl.Eval(expression, context);
@@ -585,6 +585,15 @@ public class ExtendedGrammarUnitTest
         Assert.Equal(expectedIso, result);
     }
 
+    [Fact]
+    public void LocalTimeToIsoWithOffset_EuropeAmsterdam()
+    {
+        var jexl = new Jexl(new ExtendedGrammar());
+        var result = jexl.Eval("'2025-06-26 14:00:00'|localTimeToIsoWithOffset('Europe/Amsterdam')")
+            ?.ToString();
+        Assert.Equal("2025-06-26T14:00:00.0000000+02:00", result);
+    }
+
     [Theory]
     [InlineData("uuid()|length", "36")]
     public void Uuid(string expression, string expected)
@@ -611,7 +620,7 @@ public class ExtendedGrammarUnitTest
                     new JsonObject { { "lastName", "Figgis" }, { "age", 45 } },
                 }
             },
-            { "expression", "age" }
+            { "expression", "age" },
         };
         var jexl = new Jexl(new ExtendedGrammar());
         var result = jexl.Eval(expression, context);
@@ -654,7 +663,7 @@ public class ExtendedGrammarUnitTest
             "176971594-2628499",
             "176971594-2510883",
             "176971594-2510417",
-            "176971594-2511520"
+            "176971594-2511520",
         };
         Assert.True(JsonNode.DeepEquals(expected, result));
     }
@@ -790,7 +799,7 @@ public class ExtendedGrammarUnitTest
         var expected = new JsonObject
         {
             { "SystemNominalVoltage", "208.0" },
-            { "InService", "In" }
+            { "InService", "In" },
         };
         Assert.True(JsonNode.DeepEquals(expected, result));
     }
@@ -873,22 +882,22 @@ public class ExtendedGrammarUnitTest
                         new JsonObject
                         {
                             { "value", "1249.21" },
-                            { "dateTime", "2025-08-07T09:00:00.000-07:00" }
+                            { "dateTime", "2025-08-07T09:00:00.000-07:00" },
                         },
                         new JsonObject
                         {
                             { "value", "1249.22" },
-                            { "dateTime", "2025-08-07T09:15:00.000-07:00" }
-                        }
+                            { "dateTime", "2025-08-07T09:15:00.000-07:00" },
+                        },
                     }
-                }
+                },
             },
             new JsonObject
             {
                 { "wellId", "464102120272101" },
                 { "twinId", "7f9e6673-31c5-4719-b97f-ffb546cb5bb9" },
-                { "values", new JsonArray() }
-            }
+                { "values", new JsonArray() },
+            },
         };
         Assert.True(JsonNode.DeepEquals(expected, result));
     }

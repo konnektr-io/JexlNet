@@ -358,6 +358,14 @@ namespace JexlNet
             AddFunction("dateTimeAdd", DateTimeAdd);
             AddFunction("$dateTimeAdd", DateTimeAdd);
             AddTransform("dateTimeAdd", DateTimeAdd);
+            // ConvertTimeZone
+            AddFunction("convertTimeZone", ConvertTimeZone);
+            AddFunction("$convertTimeZone", ConvertTimeZone);
+            AddTransform("convertTimeZone", ConvertTimeZone);
+            // LocalTimeToIsoWithOffset
+            AddFunction("localTimeToIsoWithOffset", LocalTimeToIsoWithOffset);
+            AddFunction("$localTimeToIsoWithOffset", LocalTimeToIsoWithOffset);
+            AddTransform("localTimeToIsoWithOffset", LocalTimeToIsoWithOffset);
             // Eval
             AddFunction("eval", Eval);
             AddFunction("$eval", Eval);
@@ -366,9 +374,6 @@ namespace JexlNet
             AddFunction("uuid", Uuid);
             AddFunction("$uuid", Uuid);
             AddFunction("uid", Uuid);
-            AddFunction("convertTimeZone", ConvertTimeZone);
-            AddFunction("$convertTimeZone", ConvertTimeZone);
-            AddTransform("convertTimeZone", ConvertTimeZone);
             AddFunction("$uid", Uuid);
             // Type checks
             AddFunction("isArray", IsArray);
@@ -383,7 +388,7 @@ namespace JexlNet
         }
 
         private static readonly JsonSerializerOptions _prettyPrintOptions =
-            new JsonSerializerOptions() { WriteIndented = true, };
+            new JsonSerializerOptions() { WriteIndented = true };
         private static readonly JsonSerializerOptions _defaultOptions = new JsonSerializerOptions();
 
         /// <summary>
@@ -501,7 +506,6 @@ namespace JexlNet
         /// </summary>
         /// <example><code>substringBefore(str, chars)</code><code>$substringBefore(str, chars)</code><code>str|substringBefore(chars)</code></example>
         /// <returns>The substring before the first occurrence of the character sequence chars in str</returns>
-
         public static JsonNode SubstringBefore(JsonNode input, JsonNode chars)
         {
             if (input is JsonValue value && chars is JsonValue charsValue)
@@ -523,7 +527,6 @@ namespace JexlNet
         /// </summary>
         /// <example><code>substringAfter(str, chars)</code><code>$substringAfter(str, chars)</code><code>str|substringAfter(chars)</code></example>
         /// <returns>The substring before the first occurrence of the character sequence chars in str</returns>
-
         public static JsonNode SubstringAfter(JsonNode input, JsonNode chars)
         {
             if (input is JsonValue value && chars is JsonValue charsValue)
@@ -682,11 +685,10 @@ namespace JexlNet
             }
             else if (input is JsonArray array)
             {
-                return array.Any(
-                    elem =>
-                        elem is JsonValue elementValue
-                        && pattern is JsonValue
-                        && elementValue.ToString().Equals(pattern.ToString())
+                return array.Any(elem =>
+                    elem is JsonValue elementValue
+                    && pattern is JsonValue
+                    && elementValue.ToString().Equals(pattern.ToString())
                 );
             }
             return false;
@@ -915,9 +917,8 @@ namespace JexlNet
             {
                 return string.Join(
                     "&",
-                    obj.Select(
-                        x =>
-                            $"{Uri.EscapeDataString(x.Key)}={Uri.EscapeDataString(x.Value.ToString())}"
+                    obj.Select(x =>
+                        $"{Uri.EscapeDataString(x.Key)}={Uri.EscapeDataString(x.Value.ToString())}"
                     )
                 );
             }
@@ -2302,12 +2303,9 @@ namespace JexlNet
             if (input is JsonObject obj)
             {
                 return new JsonArray(
-                    obj.Select(
-                            x =>
-                                new JsonArray(
-                                    new[] { JsonValue.Create(x.Key), x.Value?.DeepClone() }
-                                )
-                        )
+                    obj.Select(x => new JsonArray(
+                            new[] { JsonValue.Create(x.Key), x.Value?.DeepClone() }
+                        ))
                         .ToArray()
                 );
             }
@@ -2574,8 +2572,8 @@ namespace JexlNet
                         {
                             tz = TimeZoneInfo
                                 .GetSystemTimeZones()
-                                .FirstOrDefault(
-                                    z => z.Id.Equals(tzStr, StringComparison.OrdinalIgnoreCase)
+                                .FirstOrDefault(z =>
+                                    z.Id.Equals(tzStr, StringComparison.OrdinalIgnoreCase)
                                 );
                         }
                     }
@@ -2591,6 +2589,118 @@ namespace JexlNet
                     return null;
                 }
             }
+            return null;
+        }
+
+        /// <summary>
+        /// Converts a local time string in a specified timezone to an ISO datetime string with the correct offset.
+        /// </summary>
+        /// <example>
+        /// localTimeToIsoWithOffset("2025-06-26 14:00:00", "Europe/Amsterdam") // '2025-06-26T14:00:00.0000000+02:00'
+        /// '2025-06-26 05:00:00'|localTimeToIsoWithOffset('Pacific Standard Time') // '2025-06-26T05:00:00.0000000-08:00'
+        /// </example>
+        /// <param name="localTime">Local time string</param>
+        /// <param name="timeZone">Timezone (IANA or Windows ID or fixed offset)</param>
+        /// <returns>ISO datetime string with correct offset</returns>
+        public static JsonNode LocalTimeToIsoWithOffset(JsonNode localTime, JsonNode timeZone)
+        {
+            if (
+                localTime is JsonValue localTimeVal
+                && localTimeVal.GetValueKind() == JsonValueKind.String
+                && timeZone is JsonValue timeZoneVal
+                && timeZoneVal.GetValueKind() == JsonValueKind.String
+            )
+            {
+                try
+                {
+                    var localTimeStr = localTimeVal.ToString();
+                    var timeZoneStr = timeZoneVal.ToString();
+                    // Try to parse the local time string
+                    if (
+                        !DateTime.TryParse(
+                            localTimeStr,
+                            null,
+                            System.Globalization.DateTimeStyles.AssumeLocal,
+                            out var localDateTime
+                        )
+                    )
+                    {
+                        // Try parsing as Unspecified kind
+                        if (
+                            !DateTime.TryParse(
+                                localTimeStr,
+                                null,
+                                System.Globalization.DateTimeStyles.None,
+                                out localDateTime
+                            )
+                        )
+                        {
+                            return null;
+                        }
+                    }
+
+                    // Try to get the timezone info
+                    TimeZoneInfo tz = null;
+                    try
+                    {
+                        tz = TimeZoneInfo.FindSystemTimeZoneById(timeZoneStr);
+                    }
+                    catch (TimeZoneNotFoundException)
+                    {
+                        // Try to convert IANA to Windows ID if needed
+                        tz = TryGetTimeZoneByIanaOrOffset(timeZoneStr);
+                    }
+                    catch (InvalidTimeZoneException)
+                    {
+                        tz = TryGetTimeZoneByIanaOrOffset(timeZoneStr);
+                    }
+                    if (tz == null)
+                        return null;
+
+                    // Treat the local time as if it is in the specified timezone
+                    var unspecified = DateTime.SpecifyKind(localDateTime, DateTimeKind.Unspecified);
+                    var offset = tz.GetUtcOffset(unspecified);
+                    var offsetDateTime = new DateTimeOffset(unspecified, offset);
+                    // Format with 7 digits for fractional seconds
+                    var iso = offsetDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fffffffzzz");
+                    return JsonValue.Create(iso);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        // Helper to handle IANA/Windows/fixed offset timezones
+        private static TimeZoneInfo TryGetTimeZoneByIanaOrOffset(string tzString)
+        {
+            // Try fixed offset: e.g. +02:00 or -08:00
+            var match = TimeOffsetRegex.Match(tzString);
+            if (match.Success)
+            {
+                var sign = match.Groups[1].Value == "-" ? -1 : 1;
+                var hours = int.Parse(match.Groups[2].Value);
+                var minutes = int.Parse(match.Groups[3].Value);
+                var offset = new TimeSpan(sign * hours, sign * minutes, 0);
+                return TimeZoneInfo.CreateCustomTimeZone(tzString, offset, tzString, tzString);
+            }
+#if NET6_0_OR_GREATER
+            // .NET 6+ supports IANA time zones on Windows
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById(tzString);
+            }
+            catch { }
+#endif
+            // Optionally, map common IANA to Windows IDs here if needed
+            // For brevity, only a few examples:
+            if (tzString == "Europe/Amsterdam")
+                return TimeZoneInfo.FindSystemTimeZoneById("W. Europe Standard Time");
+            if (tzString == "America/Los_Angeles")
+                return TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time");
+            // Add more mappings as needed
             return null;
         }
 
