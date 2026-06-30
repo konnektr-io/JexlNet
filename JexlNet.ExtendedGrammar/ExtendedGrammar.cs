@@ -125,10 +125,14 @@ namespace JexlNet
             AddFunction("decodeFromNumber", DecodeFromNumber);
             AddFunction("$decodeFromNumber", DecodeFromNumber);
             AddTransform("decodeFromNumber", DecodeFromNumber);
-            // URLFormEncoded
+            // Form URL Encoded
             AddFunction("formUrlEncoded", FormUrlEncoded);
             AddFunction("$formUrlEncoded", FormUrlEncoded);
             AddTransform("formUrlEncoded", FormUrlEncoded);
+            // Form URL Decoded
+            AddFunction("formUrlDecoded", FormUrlDecoded);
+            AddFunction("$formUrlDecoded", FormUrlDecoded);
+            AddTransform("formUrlDecoded", FormUrlDecoded);
             // Regex
             AddFunction("regexMatch", RegexMatch);
             AddFunction("$regexMatch", RegexMatch);
@@ -921,6 +925,22 @@ namespace JexlNet
                         $"{Uri.EscapeDataString(x.Key)}={Uri.EscapeDataString(x.Value.ToString())}"
                     )
                 );
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Converts a form URL encoded string to an object.
+        /// </summary>
+        /// <param name="input"></param>
+        /// <example><code>formUrlDecoded(str)</code><code>$formUrlDecoded(str)</code><code>str|formUrlDecoded</code></example>
+        /// <returns>A form url decoded object</returns>
+        public static JsonNode FormUrlDecoded(JsonNode input)
+        {
+            if (input is JsonValue value)
+            {
+                string str = value.ToString();
+                return Uri.UnescapeDataString(str);
             }
             return null;
         }
