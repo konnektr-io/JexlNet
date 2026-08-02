@@ -265,6 +265,21 @@ var context = new JsonObject
 | exes[2]           | Burt Reynolds |
 | exes[lastEx - 1]  | Len Trexler   |
 
+#### Negative indexing
+
+Array elements can also be accessed from the end of the array using a
+negative index: `exes[-1]` returns the **last** element, `exes[-2]` the
+second-to-last, and so on.
+
+> ⚠️ **Portability warning**: negative indexing is supported by the C#
+> (`JexlNet`) and Python (`pyjexl-extended`) engines, but **not** by the
+> JavaScript port (`jexl-extended`), where `exes[-1]` evaluates to
+> `undefined` rather than the last element. Flow expressions that rely on
+> `[-1]` are therefore **not portable** across all ports — an expression
+> authored against the C# flow engine will silently produce `undefined` in
+> the JS playground or UI. Prefer `exes[exes.length - 1]`-style expressions,
+> or add an explicit `last` transform, when portability matters.
+
 ### Collections
 
 Collections, or arrays of objects, can be filtered by including a filter
