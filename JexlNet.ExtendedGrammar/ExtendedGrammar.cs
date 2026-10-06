@@ -416,19 +416,30 @@ namespace JexlNet
         }
 
         /**
-         * Parses the string and returns a JSON object.
+         * Parses a JSON string, or passes through values that are already structured.
          *
          * @example
          * ```jexl
          * parseJson('{"key": "value"}') // { key: "value" }
          * '{"key": "value"}'|toJson // { key: "value" }
+         * {'key': 'value'}|toJson // { key: "value" } — unchanged
+         * ```
          */
 
         /// <summary>
-        /// Parses the string and returns a JSON object.
+        /// Parses a JSON string, or returns the input unchanged when it is already structured.
+        ///
+        /// Pass-through semantics (no data loss on already-parsed values):
+        /// <list type="bullet">
+        /// <item><description>A <see cref="JsonObject"/> or <see cref="JsonArray"/> is returned unchanged.</description></item>
+        /// <item><description>A number, boolean or null <see cref="JsonValue"/> is returned unchanged.</description></item>
+        /// <item><description>A string is parsed as JSON; a string that is not valid JSON returns <c>null</c>.</description></item>
+        /// </list>
+        /// Numeric strings still coerce to numbers (e.g. <c>"2026"</c> yields the number <c>2026</c>).
         /// </summary>
         /// <example><code>json(arg)</code><code>$json(arg)</code><code>arg|json</code></example>
-        /// <returns>The JSON object that represents the input</returns>
+        /// <example><code>json('{"key": "value"}')</code><code>{'key': 'value'}|toJson</code></example>
+        /// <returns>The parsed JSON value, or the input itself when it is already a JSON object, array or primitive</returns>
         public static JsonNode ToJson(JsonNode input)
         {
             if (input is JsonValue value && value.GetValueKind() == JsonValueKind.String)
@@ -443,7 +454,10 @@ namespace JexlNet
                     return null;
                 }
             }
-            return null;
+
+            // Already structured (JsonObject, JsonArray, number, boolean, null JsonValue) or a
+            // C# null: return it unchanged instead of silently destroying it.
+            return input;
         }
 
         /// <summary>

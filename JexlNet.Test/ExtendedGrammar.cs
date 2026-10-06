@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Linq;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Xunit.Sdk;
 
@@ -15,6 +16,178 @@ public class ExtendedGrammarUnitTest
         var jexl = new Jexl(new ExtendedGrammar());
         var result = jexl.Eval(expression)?.ToString();
         Assert.Equal(expected, result);
+    }
+
+    [Theory]
+    [InlineData("'{\"a\":1}'|toJson", "{\"a\":1}")]
+    [InlineData("json('{\"a\":1}')", "{\"a\":1}")]
+    [InlineData("$json('{\"a\":1}')", "{\"a\":1}")]
+    [InlineData("parseJson('{\"a\":1}')", "{\"a\":1}")]
+    [InlineData("$parseJson('{\"a\":1}')", "{\"a\":1}")]
+    [InlineData("'{\"a\":1}'|parseJson", "{\"a\":1}")]
+    public void Json_ParsesJsonString(string expression, string expected)
+    {
+        var jexl = new Jexl(new ExtendedGrammar());
+        var result = jexl.Eval(expression);
+        Assert.NotNull(result);
+        Assert.Equal(expected, result.ToJsonString());
+    }
+
+    // Regression tests: already-structured values used to be silently turned into null (#11).
+    // Note: 'toJson' and 'json' are registered as TRANSFORMS only; the callable aliases are
+    // json/$json/parseJson/$parseJson (functions) and toJson/parseJson (transforms).
+    [Theory]
+    [InlineData("{'a':1}|toJson", "{\"a\":1}")]
+    [InlineData("{'a':1}|parseJson", "{\"a\":1}")]
+    [InlineData("json({'a':1})", "{\"a\":1}")]
+    [InlineData("$json({'a':1})", "{\"a\":1}")]
+    [InlineData("parseJson({'a':1})", "{\"a\":1}")]
+    [InlineData("$parseJson({'a':1})", "{\"a\":1}")]
+    public void Json_PassesThroughObject(string expression, string expected)
+    {
+        var jexl = new Jexl(new ExtendedGrammar());
+        var result = jexl.Eval(expression);
+        // Must NOT be null - the old implementation returned null for a JsonObject input.
+        Assert.NotNull(result);
+        Assert.IsType<JsonObject>(result);
+        Assert.Equal(expected, result.ToJsonString());
+    }
+
+    [Theory]
+    [InlineData("[1,2,3]|toJson", "[1,2,3]")]
+    [InlineData("[1,2,3]|parseJson", "[1,2,3]")]
+    [InlineData("json([1,2,3])", "[1,2,3]")]
+    [InlineData("$json([1,2,3])", "[1,2,3]")]
+    [InlineData("parseJson([1,2,3])", "[1,2,3]")]
+    public void Json_PassesThroughArray(string expression, string expected)
+    {
+        var jexl = new Jexl(new ExtendedGrammar());
+        var result = jexl.Eval(expression);
+        Assert.NotNull(result);
+        Assert.IsType<JsonArray>(result);
+        Assert.Equal(expected, result.ToJsonString());
+    }
+
+    [Theory]
+    [InlineData("42|toJson", "42")]
+    [InlineData("1.5|toJson", "1.5")]
+    [InlineData("json(42)", "42")]
+    [InlineData("$json(1.5)", "1.5")]
+    public void Json_PassesThroughNumbers(string expression, string expected)
+    {
+        var jexl = new Jexl(new ExtendedGrammar());
+        var result = jexl.Eval(expression);
+        Assert.NotNull(result);
+        Assert.IsAssignableFrom<JsonValue>(result);
+        Assert.Equal(JsonValueKind.Number, result.AsValue().GetValueKind());
+        Assert.Equal(expected, result.ToJsonString());
+    }
+
+    [Theory]
+    [InlineData("true|toJson", "true")]
+    [InlineData("false|toJson", "false")]
+    [InlineData("json(true)", "true")]
+    public void Json_PassesThroughBooleans(string expression, string expected)
+    {
+        var jexl = new Jexl(new ExtendedGrammar());
+        var result = jexl.Eval(expression);
+        Assert.NotNull(result);
+        Assert.IsAssignableFrom<JsonValue>(result);
+        // The literal's own value must survive the round trip (old code returned null).
+        Assert.Equal(expected, result.ToJsonString());
+    }
+
+    // A C#-null input passes through as C#-null: this engine represents null as a null
+    // reference, not as a JsonValue of kind Null, so "unchanged" means "still null".
+    [Theory]
+    [InlineData("null|toJson")]
+    [InlineData("missing|toJson")]
+    [InlineData("{'a':null}.a|toJson")]
+    public void Json_PassesThroughNull(string expression)
+    {
+        var jexl = new Jexl(new ExtendedGrammar());
+        var context = new JsonObject { { "missing", null } };
+        // The old code also returned null here, but by *destroying* a structured value;
+        // this asserts it is the input itself that is null, and the call still doesn't throw.
+        Assert.Null(jexl.Eval(expression, context));
+    }
+
+    // An object holding a null member is preserved intact rather than dropped.
+    [Fact]
+    public void Json_PassesThroughObjectWithNullMember()
+    {
+        var jexl = new Jexl(new ExtendedGrammar());
+        var result = jexl.Eval("{'a':null}|toJson");
+        Assert.NotNull(result);
+        Assert.IsType<JsonObject>(result);
+        Assert.Equal("{\"a\":null}", result.ToJsonString());
+    }
+
+    // Invalid JSON strings keep today's behaviour: null, no exception.
+    [Theory]
+    [InlineData("'not json'|toJson")]
+    [InlineData("json('not json')")]
+    [InlineData("'{oops}'|toJson")]
+    [InlineData("parseJson('{oops}')")]
+    public void Json_InvalidStringStillReturnsNull(string expression)
+    {
+        var jexl = new Jexl(new ExtendedGrammar());
+        Assert.Null(jexl.Eval(expression));
+    }
+
+    // Numeric-string coercion is unchanged: "2026" still yields the number 2026.
+    [Fact]
+    public void Json_NumericStringStillCoercesToNumber()
+    {
+        var jexl = new Jexl(new ExtendedGrammar());
+        var result = jexl.Eval("'2026'|toJson");
+        Assert.NotNull(result);
+        Assert.IsAssignableFrom<JsonValue>(result);
+        Assert.Equal(JsonValueKind.Number, result.AsValue().GetValueKind());
+        Assert.Equal(2026, result.AsValue().GetValue<int>());
+    }
+
+    // Pass-through composes with the rest of the grammar.
+    [Theory]
+    [InlineData("{'a':1}|toJson['a']", 1)]
+    [InlineData("{'a':1}|parseJson['a']", 1)]
+    [InlineData("{'a':{'b':2}}|toJson['a']['b']", 2)]
+    [InlineData("[1,2,3]|toJson|length", 3)]
+    [InlineData("[1,2,3]|parseJson|length", 3)]
+    [InlineData("[1,2,3]|toJson[1]", 2)]
+    public void Json_PassThroughComposesWithGrammar(string expression, int expected)
+    {
+        var jexl = new Jexl(new ExtendedGrammar());
+        var result = jexl.Eval(expression);
+        Assert.NotNull(result);
+        Assert.Equal(expected, result.AsValue().ToInt32());
+    }
+
+    [Fact]
+    public void Json_PassThroughComposesWithKeys()
+    {
+        var jexl = new Jexl(new ExtendedGrammar());
+        var result = jexl.Eval("{'a':1,'b':2}|toJson|keys");
+        Assert.NotNull(result);
+        Assert.IsType<JsonArray>(result);
+        Assert.Equal(2, result.AsArray().Count);
+        Assert.Contains("a", result.AsArray().Select(k => k!.ToString()));
+        Assert.Contains("b", result.AsArray().Select(k => k!.ToString()));
+    }
+
+    // The transform returns the same instance (no defensive re-serialise), including null.
+    [Fact]
+    public void Json_PassThroughReturnsSameInstance()
+    {
+        var obj = new JsonObject { { "a", 1 } };
+        var array = new JsonArray { 1, 2, 3 };
+        Assert.Same(obj, ExtendedGrammar.ToJson(obj));
+        Assert.Same(array, ExtendedGrammar.ToJson(array));
+        var number = JsonValue.Create(42)!;
+        Assert.Same(number, ExtendedGrammar.ToJson(number));
+        var boolValue = JsonValue.Create(true)!;
+        Assert.Same(boolValue, ExtendedGrammar.ToJson(boolValue));
+        Assert.Null(ExtendedGrammar.ToJson(null));
     }
 
     [Theory]
