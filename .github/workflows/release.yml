@@ -43,8 +43,12 @@ jobs:
         uses: NuGet/login@v1
         id: login
         with:
-          # nuget.org profile name of the Trusted Publishing policy owner.
-          user: Konnektr
+          # nuget.org profile name of the user who CREATED the trust policy.
+          # NOT the policy owner (the Konnektr org) — nuget.org resolves the policy
+          # by creator, and the org name fails with "No matching trust policy owned
+          # by user '<org>' was found". Kept in a repo variable so it can change
+          # without editing this workflow.
+          user: ${{ vars.NUGET_USER }}
 
       - name: Push to NuGet
         if: github.event_name == 'release'
