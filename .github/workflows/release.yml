@@ -11,6 +11,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write # required to request the GitHub OIDC token for NuGet Trusted Publishing
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,6 +35,17 @@ jobs:
       - name: Pack nugets
         run: dotnet pack -c Release --no-build --output .
 
+      # Trusted Publishing: exchange the GitHub OIDC token for a short-lived NuGet
+      # API key. No long-lived NUGET_API_KEY secret is involved (the temporary key
+      # is valid for 1 hour and is requested immediately before the push below).
+      - name: NuGet login (OIDC -> temporary API key)
+        if: github.event_name == 'release'
+        uses: NuGet/login@v1
+        id: login
+        with:
+          # nuget.org profile name of the Trusted Publishing policy owner.
+          user: Konnektr
+
       - name: Push to NuGet
         if: github.event_name == 'release'
-        run: dotnet nuget push "*.nupkg" --api-key ${{secrets.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json
+        run: dotnet nuget push "*.nupkg" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json
